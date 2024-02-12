@@ -1,0 +1,11 @@
+# textdomain: warning
+
+##[ init.lua ]##
+MODERATOR WARNING=管理團隊警告
+Give moderator warnings=給予管理團隊警告
+Message must not be empty.=信息不得爲空。
+Give moderator warnings via private message=通過私密信息給予管理團隊警告
+Target must not be empty.=目標不得爲空
+The player is not online.=玩家不在線。
+(dm)=（私訊）
+(dm to @1)=（傳送給 @1）

@@ -1,0 +1,11 @@
+# textdomain: warning
+
+##[ init.lua ]##
+MODERATOR WARNING=
+Give moderator warnings=
+Message must not be empty.=
+Give moderator warnings via private message=
+Target must not be empty.=
+The player is not online.=
+(dm)=
+(dm to @1)=

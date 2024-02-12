@@ -1,0 +1,1 @@
+warning.color (Color of the [MODERATOR WARNING] string) string yellow
