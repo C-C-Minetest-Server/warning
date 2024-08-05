@@ -55,7 +55,7 @@ if minetest.get_modpath("beerchat") then
             message=get_warning_string(msg)
         })
         minetest.sound_play("warning_alarm", {
-            gain = 0.3,
+            gain = beerchat.sounds_default_gain,
         }, true)
         return true
     end
