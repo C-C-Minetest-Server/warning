@@ -20,14 +20,93 @@
 ]]
 
 local S = minetest.get_translator("warning")
+local builtin_S = minetest.get_translator("__builtin")
 
-local function get_warning_string(name, param)
+local function get_warning_string(msg)
     local color = minetest.settings:get("warning.color")
     if not color or color == "" then
         color = "yellow"
     end
 
-    return minetest.colorize(color, "[" .. S("MODERATOR WARNING") .. "]") .. " <" .. name .. "> " .. param
+    return minetest.colorize(color, "[" .. S("MODERATOR WARNING") .. "] ") .. msg
+end
+
+local send_msg, send_dm
+if minetest.get_modpath("beerchat") then
+    -- From beerchat
+    send_msg = function(name, msg)
+        local channel
+        if name == "CONSOLE" and minetest.get_modpath("szutil_consocket") then
+            channel = beerchat.main_channel_name
+        else
+            channel = beerchat.get_player_channel(name)
+            if not channel then
+                beerchat.fix_player_channel(name, false)
+                return false, "Channel "..beerchat.currentPlayerChannel[name].." does not exist, switching back to "..
+                    beerchat.main_channel_name..". Please resend your message"
+            elseif not beerchat.playersChannels[name][channel] then
+                return false, "You need to join channel " .. channel
+                    .. " in order to be able to send messages to it"
+            end
+        end
+        beerchat.send_on_channel({
+            name=name,
+            channel=channel,
+            message=get_warning_string(msg)
+        })
+        minetest.sound_play("warning_alarm", {
+            gain = 0.3,
+        }, true)
+        return true
+    end
+    send_dm = function(name, target, msg)
+        local formatted_msg = get_warning_string(msg)
+        if beerchat.execute_callbacks("before_send_pm", name, formatted_msg, target) then
+			-- Sending the message
+			minetest.chat_send_player(
+				target,
+				beerchat.format_message(
+					"[PM] from (${from_player}) ${message}", {
+						from_player = name,
+						to_player = target,
+						message = formatted_msg
+					}
+				)
+			)
+            minetest.chat_send_player(
+                name,
+                beerchat.format_message(
+                    "[PM] sent to @(${to_player}) ${message}", {
+                        to_player = target,
+                        message = formatted_msg
+                    }
+                )
+            )
+            beerchat.sound_play(target, "beerchat_chime")
+			beerchat.sound_play(target, "warning_alarm")
+			return true
+		end
+    end
+else
+    send_msg = function(name, msg)
+        minetest.chat_send_all(minetest.format_chat_message(name, get_warning_string(msg)))
+        minetest.sound_play("warning_alarm", {
+            gain = 0.3,
+        }, true)
+        return true
+    end
+    send_dm = function(name, target, msg)
+        if not minetest.get_player_by_name(target) then
+            return false, builtin_S("The player @1 is not online.", target)
+        end
+        local formatted_msg = get_warning_string(msg)
+        minetest.chat_send_player(target, builtin_S("DM from @1: @2", name, formatted_msg))
+        minetest.sound_play("warning_alarm", {
+            to_player = target,
+            gain = 0.3,
+        }, true)
+        return true, S("DM to @1: @2", target, formatted_msg)
+    end
 end
 
 minetest.register_chatcommand("warn", {
@@ -39,8 +118,7 @@ minetest.register_chatcommand("warn", {
             return false, S("Message must not be empty.")
         end
 
-        minetest.chat_send_all(get_warning_string(name, param))
-        return true
+        return send_msg(name, param)
     end
 })
 
@@ -54,17 +132,11 @@ minetest.register_chatcommand("dmwarn", {
             return false, S("Target must not be empty.")
         end
 
-        if not minetest.get_player_by_name(targ) then
-            return false, S("The player is not online.")
-        end
-
         msg = string.trim(msg or "")
         if msg == "" then
             return false, S("Message must not be empty.")
         end
 
-        local warnstr = get_warning_string(name, msg)
-        minetest.chat_send_player(targ, S("(dm)") .. " " .. warnstr)
-        return true, S("(dm to @1)", targ) .. " " .. warnstr
+        return send_dm(name, targ, msg)
     end
 })
